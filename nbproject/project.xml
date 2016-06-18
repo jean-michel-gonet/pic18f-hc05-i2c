@@ -6,7 +6,7 @@
             <name>pic18f-hc05-i2c</name>
             <creation-uuid>0b1bb8eb-dfd2-4796-86d5-55bf87204008</creation-uuid>
             <make-project-type>0</make-project-type>
-            <c-extensions/>
+            <c-extensions>c</c-extensions>
             <cpp-extensions/>
             <header-extensions/>
             <asminc-extensions/>
