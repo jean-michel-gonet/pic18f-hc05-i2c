@@ -1,5 +1,7 @@
 #include <xc.h>
 #include <stdio.h>
+#include "uart.h"
+#include "test.h"
 
 /**
  * Bits de configuration:
@@ -13,17 +15,15 @@
 #pragma config WDTEN = OFF     // Watchdog inactif.
 #pragma config LVP = OFF       // Single Supply Enable bits off.
 
-/**
- * Fonction qui transmet un caractère à la EUSART.
- * Il s'agit de l'implémentation d'une fonction système qui est
- * appelée par <code>printf</code>.
- * Cette implémentation envoie le caractère à la UART. Si un terminal
- * est connecté aux sorties RX / TX, il affichera du texte.
- * @param data Le code ASCII du caractère à afficher.
-*/
-void putch(char data) {
-    while( ! TX1IF);
-    TXREG1 = data;
+#ifndef TEST
+
+void interrupt low_priority interruptionsBassePriorite() {
+    if (PIR1bits.TX1IF) {
+        if (uartCaracteresDisponiblesPourTransmission()) {
+            TXREG1 = uartTransmission();
+        }
+        PIR1bits.TX1IF = 0;
+    }
 }
 
 /**
@@ -34,10 +34,11 @@ void putch(char data) {
  * - Transmission 8 bits.
  * - Bit de stop activé.
  */
-void initialiseEUSART() {
+void initialiseHardware() {
     // Pour une fréquence de 1MHz, ceci donne 1200 bauds:
     SPBRG = 12;
     SPBRGH = 0;
+
     // Configure RC6 et RC7 comme entrées digitales, pour que
     // la EUSART puisse en prendre le contrôle:
     TRISCbits.RC6 = 1;
@@ -49,6 +50,17 @@ void initialiseEUSART() {
     RCSTAbits.SPEN = 1;  // Active la EUSART.
     TXSTAbits.SYNC = 0;  // Mode asynchrone.
     TXSTAbits.TXEN = 1;  // Active l'émetteur.
+    
+    // Active les interruptions (basse priorité):
+    PIE1bits.TX1IE = 1;
+    IPR1bits.TX1IP = 0;
+    PIE1bits.RC1IE = 1;
+    IPR1bits.RC1IP = 0;
+    
+    // Active les interruptions générales:
+    RCONbits.IPEN = 1;
+    INTCONbits.GIEH = 1;
+    INTCONbits.GIEL = 1;
 }
 
 /**
@@ -57,9 +69,20 @@ void initialiseEUSART() {
 void main(void) {
     unsigned char n;
     
-    initialiseEUSART();
+    initialiseHardware();
+    uartReinitialise();
 
     for (n = 0; n < 100; n++) {
-        printf("v1 Hello world: %d\r\n", n);
+        printf("Hello world: %d\r\n", n);
     }
 }
+#endif
+
+#ifdef TEST
+void main() {
+    initialiseTests();
+    testUart();
+    finaliseTests();
+    while(1);
+}
+#endif
