@@ -4,17 +4,6 @@
 #include "test.h"
 #include "uart.h"
 
-#ifdef TEST
-char dernierCaractereTransmis = 0;
-void demarreTransmissionUart(char data) {
-    dernierCaractereTransmis = data;
-}
-#else
-void demarreTransmissionUart(char data) {
-    TXREG1 = data;
-}
-#endif
-
 /**
  * File des caractères reçus.
  * La file est peuplée par {@link #uartReception} et
@@ -30,14 +19,14 @@ File fileReception;
 File fileTransmission;
 
 typedef enum {
-    UART_TRANSMISSION_REPOS,
+    UART_TRANSMISSION_EN_REPOS,
     UART_TRANSMISSION_EN_COURS
 } UartStatus;
 
 /**
  * État actuel de la transmission.
  */
-UartStatus uartEtat = UART_TRANSMISSION_REPOS;
+UartStatus uartEtat = UART_TRANSMISSION_EN_REPOS;
 
 /**
  * Ajoute un caractère à la file de transmission.
@@ -46,12 +35,27 @@ UartStatus uartEtat = UART_TRANSMISSION_REPOS;
  * @param data Le caractère à placer.
  */
 void uartPutch(char data) {
-    if (uartEtat == UART_TRANSMISSION_REPOS) {
-        demarreTransmissionUart(data);
+    if (uartEtat == UART_TRANSMISSION_EN_REPOS) {
         uartEtat = UART_TRANSMISSION_EN_COURS;
+        TXREG1 = data;
+        PIE1bits.TX1IE = 1;
     } else {
         while (fileEstPleine(&fileTransmission));
-        fileEnfile(&fileTransmission, data);    
+        fileEnfile(&fileTransmission, data);            
+    }
+}
+
+/**
+ * Indique qu'il n'y a plus de caractères à transmettre.
+ * @return 255 si il n'y a plus de caractères à transmettre.
+ * @see uartTransmission
+ */
+unsigned char uartCaracteresDisponiblesPourTransmission() {
+    if (fileEstVide(&fileTransmission)) {
+        uartEtat = UART_TRANSMISSION_EN_REPOS;
+        return 0;
+    } else {
+        return 255;
     }
 }
 
@@ -62,6 +66,10 @@ void uartPutch(char data) {
  * @return Un caractère de la file de réception
  */
 char uartGetch() {
+    unsigned char n = 0;
+    while(fileEstVide(&fileReception)) {
+        n++;
+    };
     return fileDefile(&fileReception);    
 }
 
@@ -81,20 +89,6 @@ char uartGetch() {
  */
 void uartReception(unsigned char c) {
     fileEnfile(&fileReception, c);
-}
-
-/**
- * Indique qu'il n'y a plus de caractères à transmettre.
- * @return 255 si il n'y a plus de caractères à transmettre.
- * @see uartTransmission
- */
-unsigned char uartCaracteresDisponiblesPourTransmission() {
-    if (fileEstVide(&fileTransmission)) {
-        uartEtat = UART_TRANSMISSION_REPOS;
-        return 0;
-    } else {
-        return 255;
-    }
 }
 
 /**
@@ -123,7 +117,7 @@ unsigned char uartTransmission() {
 void uartReinitialise() {
     fileReinitialise(&fileReception);
     fileReinitialise(&fileTransmission);
-    uartEtat = UART_TRANSMISSION_REPOS;
+    uartEtat = UART_TRANSMISSION_EN_REPOS;
 }
 
 #ifndef TEST
@@ -159,7 +153,8 @@ char getch() {
 
 #ifdef TEST
 
-void testAT() {
+void testUartTransmission() {
+    uartReinitialise();
     uartPutch('A');
     uartPutch('T');
     testeEgaliteChars  ("UPAT00", uartEtat, UART_TRANSMISSION_EN_COURS);
@@ -167,8 +162,15 @@ void testAT() {
     testeEgaliteChars  ("UPAT02", uartTransmission(), 'T');
     testeEgaliteEntiers("UPAT03", uartCaracteresDisponiblesPourTransmission(), 0);
 }
-
+void testUartReception() {
+    uartReinitialise();
+    uartReception('A');
+    uartReception('T');
+    testeEgaliteChars("UARC01", uartGetch(), 'A');
+    testeEgaliteChars("UARC02", uartGetch(), 'T');
+}
 void testUart() {
-    testAT();
+    testUartTransmission();
+    testUartReception();
 }
 #endif 

@@ -18,11 +18,17 @@
 #ifndef TEST
 
 void interrupt low_priority interruptionsBassePriorite() {
-    if (PIR1bits.TX1IF) {
+    if (PIR1bits.TX1IF && PIE1bits.TX1IE) {
         if (uartCaracteresDisponiblesPourTransmission()) {
             TXREG1 = uartTransmission();
+        } else {
+            PIE1bits.TX1IE = 0;
         }
-        PIR1bits.TX1IF = 0;
+    }
+    
+    if (PIR1bits.RC1IF) {
+        uartReception(RCREG1);
+        PIR1bits.RC1IF = 0;
     }
 }
 
@@ -41,15 +47,18 @@ void initialiseHardware() {
 
     // Configure RC6 et RC7 comme entrées digitales, pour que
     // la EUSART puisse en prendre le contrôle:
+    ANSELCbits.ANSC6 = 0;
+    ANSELCbits.ANSC7 = 0;
     TRISCbits.RC6 = 1;
     TRISCbits.RC7 = 1;
     
     // Configure la EUSART:
     // (BRGH et BRG16 sont à leur valeurs par défaut)
     // (TX9 est à sa valeur par défaut)
-    RCSTAbits.SPEN = 1;  // Active la EUSART.
     TXSTAbits.SYNC = 0;  // Mode asynchrone.
     TXSTAbits.TXEN = 1;  // Active l'émetteur.
+    RCSTAbits.CREN = 1;  // Active le récepteur.
+    RCSTAbits.SPEN = 1;  // Active la EUSART.
     
     // Active les interruptions (basse priorité):
     PIE1bits.TX1IE = 1;
@@ -67,15 +76,20 @@ void initialiseHardware() {
  * Point d'entrée du programme.
  */
 void main(void) {
-    unsigned char n;
+    char buffer[40];
     
     initialiseHardware();
     uartReinitialise();
 
-    for (n = 0; n < 100; n++) {
-        printf("Hello world: %d\r\n", n);
+    printf("Bonjour\r\n");
+    printf("Tapez une phrase:\r\n");
+
+    while(1) {
+        gets(buffer);
+        printf("Vous avez dit: %s\r\n", buffer);
     }
 }
+
 #endif
 
 #ifdef TEST
