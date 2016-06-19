@@ -80,15 +80,14 @@ char uartGetch() {
  * <pre>
  * void interrupt interruptions() {
  *  if (PIR1bits.RC1IF) {
- *      uartReception(T1REG);
- *      PIR1bits.RC1IF = 0;
+ *      uartReception();
  *  }
  * }
  * </pre>
  * @param c Le caractère reçu.
  */
-void uartReception(unsigned char c) {
-    fileEnfile(&fileReception, c);
+void uartReception() {
+    fileEnfile(&fileReception, RCREG1);
 }
 
 /**
@@ -99,16 +98,18 @@ void uartReception(unsigned char c) {
  * <pre>
  * void interrupt interruptions() {
  *  if (IPR1bits.TX1IF) {
- *      if (uartPasDeCaracteresATransmettre()) {
- *          T1REG = uartTransmission();
- *      }
+ *      uartTransmission();
  *  }
  * }
  * </pre>
  * @return Le caractère à envoyer.
  */
-unsigned char uartTransmission() {
-    return fileDefile(&fileTransmission);
+void uartTransmission() {
+    if (uartCaracteresDisponiblesPourTransmission()) {
+        TXREG1 = fileDefile(&fileTransmission);
+    } else {
+        PIE1bits.TX1IE = 0;
+    }
 }
 
 /**

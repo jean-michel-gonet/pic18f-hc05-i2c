@@ -1,9 +1,8 @@
 #ifndef UART__H
 #define UART__H
 
-void uartReception(unsigned char c);
-unsigned char uartCaracteresDisponiblesPourTransmission();
-unsigned char uartTransmission();
+void uartReception();
+void uartTransmission();
 void uartReinitialise();
 
 

@@ -18,17 +18,11 @@
 #ifndef TEST
 
 void interrupt low_priority interruptionsBassePriorite() {
-    if (PIR1bits.TX1IF && PIE1bits.TX1IE) {
-        if (uartCaracteresDisponiblesPourTransmission()) {
-            TXREG1 = uartTransmission();
-        } else {
-            PIE1bits.TX1IE = 0;
-        }
+    if (PIR1bits.TX1IF) {
+        uartTransmission();
     }
-    
     if (PIR1bits.RC1IF) {
-        uartReception(RCREG1);
-        PIR1bits.RC1IF = 0;
+        uartReception();
     }
 }
 
