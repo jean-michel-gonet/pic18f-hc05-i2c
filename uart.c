@@ -138,7 +138,9 @@ void putch(char data) {
  * @param data Le code ASCII du récupéré.
  */
 char getche() {
-    return uartGetch();
+    char data = getch();
+    putch(data);
+    return data;
 }
 
 /**

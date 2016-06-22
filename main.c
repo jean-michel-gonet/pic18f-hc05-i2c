@@ -1,5 +1,6 @@
 #include <xc.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "uart.h"
 #include "test.h"
 
@@ -35,10 +36,19 @@ void interrupt low_priority interruptionsBassePriorite() {
  * - Bit de stop activé.
  */
 void initialiseHardware() {
-    // Pour une fréquence de 1MHz, ceci donne 1200 bauds:
-    SPBRG = 12;
+    // Horloge principale Fosc = 8MHz
+    OSCCONbits.IRCF = 0b110;
+    
+    // Pour une fréquence de 8MHz, ceci donne 38461 bauds:
+    TXSTA1bits.BRGH = 1;    // Mode haute vitesse.
+    BAUDCON1bits.BRG16 = 1; // Générateur de fréquence à 16 bits.
+    SPBRG = 207;            // 9615 bauds
     SPBRGH = 0;
 
+    // Active RC1 (Enable):
+    TRISCbits.RC1 = 0;
+    PORTCbits.RC1 = 1;
+    
     // Configure RC6 et RC7 comme entrées digitales, pour que
     // la EUSART puisse en prendre le contrôle:
     ANSELCbits.ANSC6 = 0;
@@ -71,16 +81,22 @@ void initialiseHardware() {
  */
 void main(void) {
     char buffer[40];
+    int nombre1, nombre2;
     
     initialiseHardware();
     uartReinitialise();
-
     printf("Bonjour\r\n");
-    printf("Tapez une phrase:\r\n");
-
     while(1) {
+        printf("Tapez une phrase:\r\n");    
         gets(buffer);
         printf("Vous avez dit: %s\r\n", buffer);
+        printf("Tapez un nombre:\r\n");
+        gets(buffer);
+        nombre1 = atoi(buffer);
+        printf("Tapez un autre nombre:\r\n");
+        gets(buffer);
+        nombre2 = atoi(buffer);
+        printf("La somme de %d et %d est %d\r\n", nombre1, nombre2, nombre1 + nombre2);
     }
 }
 
